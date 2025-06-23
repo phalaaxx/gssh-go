@@ -12,7 +12,7 @@ import (
 
 /* Global gssh version string */
 var GsshVersion = `gssh - group ssh, ver. 2.1
-(c)2014-2024 Bozhin Zafirov <bozhin@deck17.com>
+(c)2014-2025 Bozhin Zafirov <bozhin@deck17.com>
 `
 
 /* main program */
