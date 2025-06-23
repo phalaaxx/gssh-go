@@ -1,8 +1,8 @@
 package main
 
 import (
-	"flag"
 	"fmt"
+	"github.com/phalaaxx/clap"
 	"log"
 	"math"
 	"os"
@@ -21,22 +21,15 @@ func main() {
 	var err error
 
 	// parse command line arguments
-	OptUser := flag.String("u", "root", "ssh login as this username")
-	OptFile := flag.String("f", "", "file with the list of hosts")
-	OptDelay := flag.Int("d", 100, "delay between each ssh fork (default 100 msec)")
-	OptSection := flag.String("s", "", "name of ini section containing servers list")
-	OptProcesses := flag.Int("p", 500, "number of parallel ssh processes (default: 500)")
-	OptNoStrict := flag.Bool("n", false, "don't use strict ssh fingerprint checking")
-	OptAnsible := flag.Bool("a", false, "Read ansible hosts file at /etc/ansible/hosts")
-	OptVersion := flag.Bool("v", false, "Print version and exit")
-	OptHelp := flag.Bool("h", false, "show this help screen")
-	flag.Parse()
-
-	/* show help screen and exit in case of -h or --help option */
-	if *OptHelp {
-		flag.Usage()
-		os.Exit(1)
-	}
+	OptUser := clap.String('u', "user", "root", "ssh login as this username [default: root]", false)
+	OptFile := clap.String('f', "file", "", "file with the list of hosts", false)
+	OptDelay := clap.Int('d', "delay", 100, "delay between each ssh fork (default 100 msec)", false)
+	OptSection := clap.String('s', "section", "", "name of ini section containing servers list", false)
+	OptProcesses := clap.Int('p',  "processes", 500, "number of parallel ssh processes (default: 500)", false)
+	OptNoStrict := clap.Bool('n', "no-strict", false, "don't use strict ssh fingerprint checking", false)
+	OptAnsible := clap.Bool('a', "ansible-hosts", false, "Read ansible hosts file at /etc/ansible/hosts", false)
+	OptVersion := clap.Bool('v', "version", false, "Print version and exit", false)
+	clap.Parse(true)
 
 	/* print program version and exit */
 	if *OptVersion {
@@ -47,7 +40,7 @@ func main() {
 	}
 
 	/* look for mandatory positional arguments */
-	if flag.NArg() < 1 {
+	if clap.NArg() < 1 {
 		log.Fatal("Nothing to do. Use -h for help.")
 	}
 
@@ -78,7 +71,7 @@ func main() {
 	message, active := OutputMonitor(servers.Len(*OptSection), AddrPadding, srv)
 
 	/* command to run on servers */
-	OptCommand := flag.Arg(0)
+	OptCommand := clap.Arg(0)
 
 	/* make new group */
 	group := new(SshGroup)
