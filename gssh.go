@@ -38,7 +38,7 @@ func main() {
 		if _, err = os.Stderr.WriteString(GsshVersion); err != nil {
 			log.Fatal(err)
 		}
-		os.Exit(1)
+		os.Exit(0)
 	}
 
 	/* look for mandatory positional arguments */
