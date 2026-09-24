@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"log"
 	"os/exec"
@@ -46,12 +45,12 @@ func (s *SshGroup) Command(ssh *SshServer, Command string, NoStrict bool, messag
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		log.Fatal(fmt.Sprintf("StdoutPipe: Error: %v", err))
+		log.Printf("StdoutPipe: Error: %v\n", err)
 	}
 
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		log.Fatal(fmt.Sprintf("StderrPipe: Error: %v", err))
+		log.Printf("StderrPipe: Error: %v\n", err)
 	}
 
 	/* define Stdout and Stderr read buffers */
@@ -74,7 +73,7 @@ func (s *SshGroup) Command(ssh *SshServer, Command string, NoStrict bool, messag
 				break
 			}
 			if err != nil {
-				log.Fatal(fmt.Sprintf("PrintOutput: Error: %v", err))
+				log.Printf("PrintOutput: Error: %v\n", err)
 			}
 			message <- Message{
 				Server: ssh.Address,

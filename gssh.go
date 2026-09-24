@@ -11,7 +11,7 @@ import (
 )
 
 /* Global gssh version string */
-var GsshVersion = `gssh - group ssh, ver. 2.1
+var GsshVersion string = `gssh - group ssh, ver. 2.2
 (c)2014-2025 Bozhin Zafirov <bozhin@deck17.com>
 `
 
@@ -25,7 +25,7 @@ func main() {
 	OptFile := clap.String('f', "file", "", "file with the list of hosts", false)
 	OptDelay := clap.Int('d', "delay", 100, "delay between each ssh fork (default 100 msec)", false)
 	OptSection := clap.String('s', "section", "", "name of ini section containing servers list", false)
-	OptProcesses := clap.Int('p',  "processes", 500, "number of parallel ssh processes (default: 500)", false)
+	OptProcesses := clap.Int('p', "processes", 500, "number of parallel ssh processes (default: 500)", false)
 	OptNoStrict := clap.Bool('n', "no-strict", false, "don't use strict ssh fingerprint checking", false)
 	OptAnsible := clap.Bool('a', "ansible-hosts", false, "Read ansible hosts file at /etc/ansible/hosts", false)
 	OptVersion := clap.Bool('v', "version", false, "Print version and exit", false)
@@ -33,7 +33,7 @@ func main() {
 
 	/* print program version and exit */
 	if *OptVersion {
-		if _, err = fmt.Fprintf(os.Stderr, GsshVersion); err != nil {
+		if _, err = os.Stderr.WriteString(GsshVersion); err != nil {
 			log.Fatal(err)
 		}
 		os.Exit(1)
@@ -55,7 +55,7 @@ func main() {
 	if *OptFile != "" {
 		ServerListFile, err = os.Open(*OptFile)
 		if err != nil {
-			log.Fatal(fmt.Sprintf("ServerListFile: Error: %v", err))
+			log.Fatalf("ServerListFile: Error: %v", err)
 		}
 		ServerListFileClose := func() {
 			if err := ServerListFile.Close(); err != nil {
