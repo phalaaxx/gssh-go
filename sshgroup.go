@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"os/exec"
+	"strings"
 	"sync"
 )
 
@@ -69,11 +70,15 @@ func (s *SshGroup) Command(ssh *SshServer, Command string, NoStrict bool, messag
 		defer w.Done()
 		for {
 			line, err := Std.ReadString('\n')
-			if err == io.EOF {
+			if err == io.EOF && line == "" {
 				break
 			}
-			if err != nil {
+			if err != nil && err != io.EOF {
 				log.Printf("PrintOutput: Error: %v\n", err)
+			}
+			/* the last line of output may not end with a newline */
+			if !strings.HasSuffix(line, "\n") {
+				line += "\n"
 			}
 			message <- Message{
 				Server: ssh.Address,
