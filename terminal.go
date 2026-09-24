@@ -6,8 +6,9 @@ import (
 
 /* IsTerminal returns true if output device is terminal */
 func IsTerminal(f *os.File) bool {
-	if fileInfo, _ := f.Stat(); (fileInfo.Mode() & os.ModeCharDevice) != 0 {
-		return true
+	fileInfo, err := f.Stat()
+	if err != nil {
+		return false
 	}
-	return false
+	return (fileInfo.Mode() & os.ModeCharDevice) != 0
 }
