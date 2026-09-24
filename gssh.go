@@ -65,6 +65,8 @@ func main() {
 			}
 		}
 		defer ServerListFileClose()
+	} else if IsTerminal(os.Stdin) {
+		log.Fatal("No list of servers. Use -f or supply the list to standard input.")
 	}
 	servers := LoadServerList(ServerListFile)
 	if _, ok := servers[*OptSection]; *OptSection != "" && !ok {
