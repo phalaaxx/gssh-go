@@ -11,8 +11,8 @@ import (
 )
 
 /* Global gssh version string */
-var GsshVersion string = `gssh - group ssh, ver. 2.2
-(c)2014-2025 Bozhin Zafirov <bozhin@deck17.com>
+var GsshVersion string = `gssh - group ssh, ver. 2.3
+(c)2014-2026 Bozhin Zafirov <bozhin@deck17.com>
 `
 
 /* main program */
