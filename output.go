@@ -136,6 +136,7 @@ func OutputMonitor(total int, padding int, srv *sync.WaitGroup) (chan Message, c
 			log.Println(err)
 		}
 	}
+	srv.Add(1)
 	go OutputCallback(message, active, srv)
 
 	return message, active

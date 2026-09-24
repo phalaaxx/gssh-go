@@ -114,7 +114,7 @@ func main() {
 	}
 
 	/* spawn ssh processes */
-	srv.Add(len(hosts) + 1)
+	srv.Add(len(hosts))
 	for i, Server := range hosts {
 		ssh := &SshServer{
 			Username: *OptUser,
