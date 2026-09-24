@@ -29,36 +29,50 @@ func OutputMonitor(total int, padding int, srv *sync.WaitGroup) (chan Message, c
 	StdoutStats := make(OutputStats)
 	StderrStats := make(OutputStats)
 
-	PrintToTerminal := IsTerminal(os.Stdout)
+	/* progress is printed to stderr, so only show it when stderr is a terminal */
+	ShowProgress := IsTerminal(os.Stderr)
 
 	/* initialize output template strings */
 	OutTemplate := "%*s%s \033[01;32m->\033[0m %s"
 	ErrTemplate := "%*s%s \033[01;31m=>\033[0m %s"
+	OutArrow := "\033[01;32m->\033[0m"
+	ErrArrow := "\033[01;31m=>\033[0m"
 
 	/* disable colored output in case output is redirected */
-	if !PrintToTerminal {
-		PrintToTerminal = false
+	if !IsTerminal(os.Stdout) {
 		OutTemplate = "%*s%s -> %s"
 	}
-	if !IsTerminal(os.Stderr) {
+	if !ShowProgress {
 		ErrTemplate = "%*s%s => %s"
+		OutArrow = "->"
+		ErrArrow = "=>"
 	}
 
 	/* ClearProgress defines a local function to clear command progress */
+	ProgressLen := 0
 	ClearProgress := func() {
-		if _, err := fmt.Fprintf(os.Stderr, "\r%*s\r", 41, " "); err != nil {
+		if !ShowProgress || ProgressLen == 0 {
+			return
+		}
+		if _, err := fmt.Fprintf(os.Stderr, "\r%*s\r", ProgressLen, ""); err != nil {
 			log.Println(err)
 		}
+		ProgressLen = 0
 	}
 	PrintProgress := func() {
-		if _, err := fmt.Fprintf(os.Stderr, "[%d/%d] %.2f%% complete, %d active",
+		if !ShowProgress {
+			return
+		}
+		n, err := fmt.Fprintf(os.Stderr, "[%d/%d] %.2f%% complete, %d active",
 			cntComplete,
 			total,
 			float64(cntComplete)*float64(100)/float64(total),
 			cntActive,
-		); err != nil {
+		)
+		if err != nil {
 			log.Println(err)
 		}
+		ProgressLen = n
 	}
 
 	/* statistics variables */
@@ -89,17 +103,11 @@ func OutputMonitor(total int, padding int, srv *sync.WaitGroup) (chan Message, c
 					StderrLinesCount++
 					OutDev = os.Stderr
 				}
-				if PrintToTerminal {
-					/* clear progress */
-					ClearProgress()
-				}
+				ClearProgress()
 				if _, err := fmt.Fprintf(OutDev, Template, padding-len(msg.Server)+1, " ", msg.Server, msg.Data); err != nil {
 					log.Println(err)
 				}
-				if PrintToTerminal {
-					/* print progress */
-					PrintProgress()
-				}
+				PrintProgress()
 			case cnt := <-active:
 				/* update active count and exit if cntActive is zero */
 				if cnt < 0 {
@@ -113,12 +121,14 @@ func OutputMonitor(total int, padding int, srv *sync.WaitGroup) (chan Message, c
 		/* calculate and print end stats */
 		ClearProgress()
 		_, err := fmt.Fprintf(os.Stderr,
-			"\n  Done. Processed: %d / Output: %d (%d) / \033[01;32m->\033[0m %d (%d) / \033[01;31m=>\033[0m %d (%d)\n",
+			"\n  Done. Processed: %d / Output: %d (%d) / %s %d (%d) / %s %d (%d)\n",
 			total,
 			StdoutServersCount+StderrServersCount,
 			StdoutLinesCount+StderrLinesCount,
+			OutArrow,
 			StdoutServersCount,
 			StdoutLinesCount,
+			ErrArrow,
 			StderrServersCount,
 			StderrLinesCount,
 		)
