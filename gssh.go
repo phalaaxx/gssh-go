@@ -66,11 +66,23 @@ func main() {
 		}
 		defer ServerListFileClose()
 	}
-	AddrPadding, servers := LoadServerList(ServerListFile)
+	servers := LoadServerList(ServerListFile)
+	if _, ok := servers[*OptSection]; *OptSection != "" && !ok {
+		log.Fatalf("Section '%s' not found in the list of servers.", *OptSection)
+	}
+
+	/* run the command only once on servers listed in multiple sections */
+	hosts := servers.Hosts(*OptSection)
+	AddrPadding := 0
+	for _, host := range hosts {
+		if AddrPadding < len(host) {
+			AddrPadding = len(host)
+		}
+	}
 
 	srv := new(sync.WaitGroup)
 	/* start output monitor goroutine */
-	message, active := OutputMonitor(servers.Len(*OptSection), AddrPadding, srv)
+	message, active := OutputMonitor(len(hosts), AddrPadding, srv)
 
 	/* command to run on servers */
 	OptCommand := clap.Arg(0)
@@ -85,7 +97,7 @@ func main() {
 	if *OptProcesses < 1 {
 		log.Fatal("Number of parallel processes must be at least 1.")
 	}
-	*OptProcesses = int(math.Min(float64(*OptProcesses), float64(servers.Len(*OptSection))))
+	*OptProcesses = int(math.Min(float64(*OptProcesses), float64(len(hosts))))
 
 	/* limit the number of parallel ssh processes */
 	slots := make(chan struct{}, *OptProcesses)
@@ -97,34 +109,28 @@ func main() {
   [*] spawning %d parallel ssh sessions
 
 `
-	if _, err = fmt.Fprintf(os.Stderr, TemplateString, GsshVersion, servers.Len(*OptSection), OptCommand, *OptUser, *OptProcesses); err != nil {
+	if _, err = fmt.Fprintf(os.Stderr, TemplateString, GsshVersion, len(hosts), OptCommand, *OptUser, *OptProcesses); err != nil {
 		log.Println(err)
 	}
 
 	/* spawn ssh processes */
-	srv.Add(servers.Len(*OptSection) + 1)
-	for section := range servers {
-		if len(*OptSection) != 0 && section != *OptSection {
-			/* skip current section */
-			continue
+	srv.Add(len(hosts) + 1)
+	for i, Server := range hosts {
+		ssh := &SshServer{
+			Username: *OptUser,
+			Address:  Server,
 		}
-		for i, Server := range servers[section] {
-			ssh := &SshServer{
-				Username: *OptUser,
-				Address:  Server,
-			}
-			group.Servers = append(group.Servers, ssh)
-			/* wait for a free slot and run command */
-			slots <- struct{}{}
-			active <- 1
-			go func() {
-				defer func() { <-slots }()
-				group.Command(ssh, OptCommand, *OptNoStrict, message, active, srv)
-			}()
-			/* time delay and max processes wait between spawns */
-			if i < servers.Len(*OptSection) {
-				time.Sleep(time.Duration(*OptDelay) * time.Millisecond)
-			}
+		group.Servers = append(group.Servers, ssh)
+		/* wait for a free slot and run command */
+		slots <- struct{}{}
+		active <- 1
+		go func() {
+			defer func() { <-slots }()
+			group.Command(ssh, OptCommand, *OptNoStrict, message, active, srv)
+		}()
+		/* time delay between spawns, except after the last one */
+		if i < len(hosts)-1 {
+			time.Sleep(time.Duration(*OptDelay) * time.Millisecond)
 		}
 	}
 	/* wait for subprocesses to exit */

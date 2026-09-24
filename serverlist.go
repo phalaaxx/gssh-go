@@ -15,14 +15,22 @@ import (
 /* ServerList defines a type for list of servers with sections */
 type ServerList map[string]sort.StringSlice
 
-/* Len returns the number of servers in the specified section */
-func (s ServerList) Len(sectionName string) (count int) {
+/* Hosts returns a sorted list of unique servers in the specified section or in all sections */
+func (s ServerList) Hosts(sectionName string) (hosts []string) {
+	unique := make(map[string]bool)
 	for section := range s {
-		if len(sectionName) == 0 || sectionName == section {
-			count = count + len(s[section])
+		if len(sectionName) != 0 && sectionName != section {
+			continue
+		}
+		for _, host := range s[section] {
+			if !unique[host] {
+				unique[host] = true
+				hosts = append(hosts, host)
+			}
 		}
 	}
-	return count
+	sort.Strings(hosts)
+	return hosts
 }
 
 /* hostRange matches ansible style host ranges such as [01:10], [a:f] or [1:10:2] */
@@ -77,7 +85,7 @@ func ExpandHostRange(host string) (hosts []string) {
 }
 
 /* LoadServerList loads a list of server addresses from a file */
-func LoadServerList(file *os.File) (AddrPadding int, servers ServerList) {
+func LoadServerList(file *os.File) (servers ServerList) {
 	servers = make(map[string]sort.StringSlice)
 	AppendUnique := func(sectionList sort.StringSlice, Server string) []string {
 		if !sort.StringsAreSorted(sectionList) {
@@ -113,9 +121,6 @@ func LoadServerList(file *os.File) (AddrPadding int, servers ServerList) {
 		}
 		/* ignore host variables, e.g. "host1 ansible_host=10.0.0.1" */
 		for _, Server := range ExpandHostRange(strings.Fields(SLine)[0]) {
-			if AddrPadding < len(Server) {
-				AddrPadding = len(Server)
-			}
 			servers[section] = AppendUnique(servers[section], Server)
 		}
 	}

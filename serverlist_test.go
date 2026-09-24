@@ -53,7 +53,7 @@ db2`
 	}
 	defer file.Close()
 
-	padding, servers := LoadServerList(file)
+	servers := LoadServerList(file)
 	expected := ServerList{
 		"main": {"host0"},
 		"web":  {"web1", "web2"},
@@ -62,7 +62,20 @@ db2`
 	if !reflect.DeepEqual(servers, expected) {
 		t.Errorf("LoadServerList() = %q, expected %q", servers, expected)
 	}
-	if padding != 5 {
-		t.Errorf("LoadServerList() padding = %d, expected 5", padding)
+}
+
+func TestHosts(t *testing.T) {
+	servers := ServerList{
+		"main": {"host0", "web1"},
+		"web":  {"web1", "web2"},
+	}
+	if hosts := servers.Hosts(""); !reflect.DeepEqual(hosts, []string{"host0", "web1", "web2"}) {
+		t.Errorf("Hosts(\"\") = %q", hosts)
+	}
+	if hosts := servers.Hosts("web"); !reflect.DeepEqual(hosts, []string{"web1", "web2"}) {
+		t.Errorf("Hosts(\"web\") = %q", hosts)
+	}
+	if hosts := servers.Hosts("none"); hosts != nil {
+		t.Errorf("Hosts(\"none\") = %q", hosts)
 	}
 }
