@@ -2,12 +2,14 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"log"
 	"os/exec"
 	"strings"
 	"sync"
+	"time"
 )
 
 /* SshServer connection data */
@@ -19,6 +21,7 @@ type SshServer struct {
 /* SshGroup client group */
 type SshGroup struct {
 	Servers []*SshServer
+	Timeout time.Duration
 }
 
 /* Command runs a new ssh session to the specified server and prints output from command sent to the server */
@@ -34,10 +37,21 @@ func (s *SshGroup) Command(ssh *SshServer, Command string, NoStrict bool, messag
 		StrictHostKeyChecking = "StrictHostKeyChecking=no"
 	}
 
-	cmd := exec.Command("env",
+	/* limit the total run time of the command if requested */
+	ctx := context.Background()
+	if s.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, s.Timeout)
+		defer cancel()
+	}
+
+	cmd := exec.CommandContext(ctx, "env",
 		"ssh",
 		"-A",
 		"-o", "BatchMode=yes",
+		"-o", "ConnectTimeout=10",
+		"-o", "ServerAliveInterval=15",
+		"-o", "ServerAliveCountMax=3",
 		"-o", "PasswordAuthentication=no",
 		"-o", StrictHostKeyChecking,
 		"-o", "GSSAPIAuthentication=no",
@@ -67,6 +81,14 @@ func (s *SshGroup) Command(ssh *SshServer, Command string, NoStrict bool, messag
 		return
 	}
 
+	/* on timeout also close the pipes, in case a child of ssh keeps them open */
+	cmd.Cancel = func() error {
+		err := cmd.Process.Kill()
+		_ = stdout.Close()
+		_ = stderr.Close()
+		return err
+	}
+
 	/* define Stdout and Stderr read buffers */
 	Stdout := bufio.NewReader(stdout)
 	Stderr := bufio.NewReader(stderr)
@@ -88,6 +110,10 @@ func (s *SshGroup) Command(ssh *SshServer, Command string, NoStrict bool, messag
 				break
 			}
 			if err != nil && err != io.EOF {
+				if ctx.Err() != nil {
+					/* pipes were closed on timeout */
+					break
+				}
 				log.Printf("PrintOutput: %s: Error: %v\n", ssh.Address, err)
 				break
 			}
@@ -107,7 +133,12 @@ func (s *SshGroup) Command(ssh *SshServer, Command string, NoStrict bool, messag
 	go PrintOutput(false, Stderr)
 
 	w.Wait()
-	if err := cmd.Wait(); err != nil {
+	err = cmd.Wait()
+	if ctx.Err() == context.DeadlineExceeded {
+		Failed(fmt.Errorf("command timed out after %v", s.Timeout))
+		return
+	}
+	if err != nil {
 		if _, ok := err.(*exec.ExitError); !ok {
 			log.Println(err)
 		}

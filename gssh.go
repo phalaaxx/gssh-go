@@ -28,6 +28,7 @@ func main() {
 	OptProcesses := clap.Int('p', "processes", 500, "number of parallel ssh processes (default: 500)", false)
 	OptNoStrict := clap.Bool('n', "no-strict", false, "don't use strict ssh fingerprint checking", false)
 	OptAnsible := clap.Bool('a', "ansible-hosts", false, "Read ansible hosts file at /etc/ansible/hosts", false)
+	OptTimeout := clap.Int('t', "timeout", 0, "kill ssh sessions running longer than this many seconds (default: no limit)", false)
 	OptVersion := clap.Bool('v', "version", false, "Print version and exit", false)
 	clap.Parse(true)
 
@@ -74,7 +75,9 @@ func main() {
 	OptCommand := clap.Arg(0)
 
 	/* make new group */
-	group := new(SshGroup)
+	group := &SshGroup{
+		Timeout: time.Duration(*OptTimeout) * time.Second,
+	}
 
 	/* no point to spawn more processes than servers */
 	if *OptProcesses < 1 {
