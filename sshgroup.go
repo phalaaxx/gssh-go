@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"log"
 	"os/exec"
@@ -44,14 +45,25 @@ func (s *SshGroup) Command(ssh *SshServer, Command string, NoStrict bool, messag
 		ssh.Address,
 		Command)
 
+	/* Failed reports an error which prevented the ssh session from running */
+	Failed := func(err error) {
+		message <- Message{
+			Server: ssh.Address,
+			Data:   fmt.Sprintf("gssh: %v\n", err),
+			Stdout: false,
+		}
+	}
+
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		log.Printf("StdoutPipe: Error: %v\n", err)
+		Failed(err)
+		return
 	}
 
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		log.Printf("StderrPipe: Error: %v\n", err)
+		Failed(err)
+		return
 	}
 
 	/* define Stdout and Stderr read buffers */
@@ -60,7 +72,8 @@ func (s *SshGroup) Command(ssh *SshServer, Command string, NoStrict bool, messag
 
 	/* run the command */
 	if err := cmd.Start(); err != nil {
-		log.Println(err)
+		Failed(err)
+		return
 	}
 
 	var w sync.WaitGroup
@@ -74,7 +87,8 @@ func (s *SshGroup) Command(ssh *SshServer, Command string, NoStrict bool, messag
 				break
 			}
 			if err != nil && err != io.EOF {
-				log.Printf("PrintOutput: Error: %v\n", err)
+				log.Printf("PrintOutput: %s: Error: %v\n", ssh.Address, err)
+				break
 			}
 			/* the last line of output may not end with a newline */
 			if !strings.HasSuffix(line, "\n") {
