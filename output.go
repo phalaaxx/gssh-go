@@ -14,15 +14,22 @@ type Message struct {
 	Stdout bool
 }
 
+/* Status reports a started (Delta 1) or a finished (Delta -1) ssh session */
+type Status struct {
+	Delta  int
+	Failed bool
+}
+
 /* OutputMonitor prints out stats and server data to screen */
-func OutputMonitor(total int, padding int, srv *sync.WaitGroup) (chan Message, chan int) {
+func OutputMonitor(total int, padding int, srv *sync.WaitGroup) (chan Message, chan Status, *int) {
 	var cntActive int
 	var cntComplete int
+	var cntFailed int
 	var Template string
 	var OutDev *os.File
 
 	message := make(chan Message)
-	active := make(chan int)
+	active := make(chan Status)
 
 	type OutputStats map[string]bool
 
@@ -81,7 +88,7 @@ func OutputMonitor(total int, padding int, srv *sync.WaitGroup) (chan Message, c
 	var StdoutLinesCount int
 	var StderrLinesCount int
 
-	OutputCallback := func(message chan Message, active chan int, srv *sync.WaitGroup) {
+	OutputCallback := func(message chan Message, active chan Status, srv *sync.WaitGroup) {
 		defer srv.Done()
 		for cntComplete != total {
 			select {
@@ -108,12 +115,15 @@ func OutputMonitor(total int, padding int, srv *sync.WaitGroup) (chan Message, c
 					log.Println(err)
 				}
 				PrintProgress()
-			case cnt := <-active:
+			case status := <-active:
 				/* update active count and exit if cntActive is zero */
-				if cnt < 0 {
-					cntComplete = cntComplete - cnt
+				if status.Delta < 0 {
+					cntComplete = cntComplete - status.Delta
 				}
-				cntActive = cntActive + cnt
+				if status.Failed {
+					cntFailed++
+				}
+				cntActive = cntActive + status.Delta
 				ClearProgress()
 				PrintProgress()
 			}
@@ -121,7 +131,7 @@ func OutputMonitor(total int, padding int, srv *sync.WaitGroup) (chan Message, c
 		/* calculate and print end stats */
 		ClearProgress()
 		_, err := fmt.Fprintf(os.Stderr,
-			"\n  Done. Processed: %d / Output: %d (%d) / %s %d (%d) / %s %d (%d)\n",
+			"\n  Done. Processed: %d / Output: %d (%d) / %s %d (%d) / %s %d (%d) / Failed: %d\n",
 			total,
 			StdoutServersCount+StderrServersCount,
 			StdoutLinesCount+StderrLinesCount,
@@ -131,6 +141,7 @@ func OutputMonitor(total int, padding int, srv *sync.WaitGroup) (chan Message, c
 			ErrArrow,
 			StderrServersCount,
 			StderrLinesCount,
+			cntFailed,
 		)
 		if err != nil {
 			log.Println(err)
@@ -139,5 +150,5 @@ func OutputMonitor(total int, padding int, srv *sync.WaitGroup) (chan Message, c
 	srv.Add(1)
 	go OutputCallback(message, active, srv)
 
-	return message, active
+	return message, active, &cntFailed
 }

@@ -82,7 +82,7 @@ func main() {
 
 	srv := new(sync.WaitGroup)
 	/* start output monitor goroutine */
-	message, active := OutputMonitor(len(hosts), AddrPadding, srv)
+	message, active, failed := OutputMonitor(len(hosts), AddrPadding, srv)
 
 	/* command to run on servers */
 	OptCommand := clap.Arg(0)
@@ -123,7 +123,7 @@ func main() {
 		group.Servers = append(group.Servers, ssh)
 		/* wait for a free slot and run command */
 		slots <- struct{}{}
-		active <- 1
+		active <- Status{Delta: 1}
 		go func() {
 			defer func() { <-slots }()
 			group.Command(ssh, OptCommand, *OptNoStrict, message, active, srv)
@@ -135,4 +135,9 @@ func main() {
 	}
 	/* wait for subprocesses to exit */
 	srv.Wait()
+
+	/* exit with an error if the command failed on any server */
+	if *failed > 0 {
+		os.Exit(1)
+	}
 }

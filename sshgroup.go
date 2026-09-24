@@ -26,9 +26,10 @@ type SshGroup struct {
 }
 
 /* Command runs a new ssh session to the specified server and prints output from command sent to the server */
-func (s *SshGroup) Command(ssh *SshServer, Command string, NoStrict bool, message chan Message, active chan int, srv *sync.WaitGroup) {
+func (s *SshGroup) Command(ssh *SshServer, Command string, NoStrict bool, message chan Message, active chan Status, srv *sync.WaitGroup) {
+	failed := true
 	defer func() {
-		active <- -1
+		active <- Status{Delta: -1, Failed: failed}
 		srv.Done()
 	}()
 
@@ -149,5 +150,7 @@ func (s *SshGroup) Command(ssh *SshServer, Command string, NoStrict bool, messag
 		if _, ok := err.(*exec.ExitError); !ok {
 			log.Println(err)
 		}
+		return
 	}
+	failed = false
 }
