@@ -37,6 +37,7 @@ func (s *SshGroup) Command(ssh *SshServer, Command string, NoStrict bool, messag
 	cmd := exec.Command("env",
 		"ssh",
 		"-A",
+		"-o", "BatchMode=yes",
 		"-o", "PasswordAuthentication=no",
 		"-o", StrictHostKeyChecking,
 		"-o", "GSSAPIAuthentication=no",
