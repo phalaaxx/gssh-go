@@ -20,8 +20,9 @@ type SshServer struct {
 
 /* SshGroup client group */
 type SshGroup struct {
-	Servers []*SshServer
-	Timeout time.Duration
+	Servers      []*SshServer
+	Timeout      time.Duration
+	ForwardAgent bool
 }
 
 /* Command runs a new ssh session to the specified server and prints output from command sent to the server */
@@ -34,7 +35,13 @@ func (s *SshGroup) Command(ssh *SshServer, Command string, NoStrict bool, messag
 	/* host key checking from commandline arguments */
 	StrictHostKeyChecking := "StrictHostKeyChecking=yes"
 	if NoStrict {
-		StrictHostKeyChecking = "StrictHostKeyChecking=no"
+		StrictHostKeyChecking = "StrictHostKeyChecking=accept-new"
+	}
+
+	/* ssh agent forwarding from commandline arguments */
+	ForwardAgent := "ForwardAgent=no"
+	if s.ForwardAgent {
+		ForwardAgent = "ForwardAgent=yes"
 	}
 
 	/* limit the total run time of the command if requested */
@@ -47,7 +54,7 @@ func (s *SshGroup) Command(ssh *SshServer, Command string, NoStrict bool, messag
 
 	cmd := exec.CommandContext(ctx, "env",
 		"ssh",
-		"-A",
+		"-o", ForwardAgent,
 		"-o", "BatchMode=yes",
 		"-o", "ConnectTimeout=10",
 		"-o", "ServerAliveInterval=15",
