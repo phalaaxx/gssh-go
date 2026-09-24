@@ -35,6 +35,7 @@ func OutputMonitor(total int, padding int, srv *sync.WaitGroup) (chan Message, c
 
 	StdoutStats := make(OutputStats)
 	StderrStats := make(OutputStats)
+	OutputServers := make(OutputStats)
 
 	/* progress is printed to stderr, so only show it when stderr is a terminal */
 	ShowProgress := IsTerminal(os.Stderr)
@@ -93,6 +94,7 @@ func OutputMonitor(total int, padding int, srv *sync.WaitGroup) (chan Message, c
 		for cntComplete != total {
 			select {
 			case msg := <-message:
+				OutputServers[msg.Server] = true
 				if msg.Stdout {
 					Template = OutTemplate
 					if _, ok := StdoutStats[msg.Server]; !ok {
@@ -133,7 +135,7 @@ func OutputMonitor(total int, padding int, srv *sync.WaitGroup) (chan Message, c
 		_, err := fmt.Fprintf(os.Stderr,
 			"\n  Done. Processed: %d / Output: %d (%d) / %s %d (%d) / %s %d (%d) / Failed: %d\n",
 			total,
-			StdoutServersCount+StderrServersCount,
+			len(OutputServers),
 			StdoutLinesCount+StderrLinesCount,
 			OutArrow,
 			StdoutServersCount,
