@@ -91,6 +91,7 @@ func main() {
 
 	/* make new group */
 	group := &SshGroup{
+		NoStrict:     *OptNoStrict,
 		Timeout:      time.Duration(*OptTimeout) * time.Second,
 		ForwardAgent: *OptForwardAgent,
 	}
@@ -122,13 +123,12 @@ func main() {
 			Username: *OptUser,
 			Address:  Server,
 		}
-		group.Servers = append(group.Servers, ssh)
 		/* wait for a free slot and run command */
 		slots <- struct{}{}
 		active <- Status{Delta: 1}
 		go func() {
 			defer func() { <-slots }()
-			group.Command(ssh, OptCommand, *OptNoStrict, message, active, srv)
+			group.Command(ssh, OptCommand, message, active, srv)
 		}()
 		/* time delay between spawns, except after the last one */
 		if i < len(hosts)-1 {

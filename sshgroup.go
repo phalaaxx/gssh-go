@@ -18,15 +18,15 @@ type SshServer struct {
 	Address  string
 }
 
-/* SshGroup client group */
+/* SshGroup holds ssh options common to all servers */
 type SshGroup struct {
-	Servers      []*SshServer
+	NoStrict     bool
 	Timeout      time.Duration
 	ForwardAgent bool
 }
 
 /* Command runs a new ssh session to the specified server and prints output from command sent to the server */
-func (s *SshGroup) Command(ssh *SshServer, Command string, NoStrict bool, message chan Message, active chan Status, srv *sync.WaitGroup) {
+func (s *SshGroup) Command(ssh *SshServer, Command string, message chan Message, active chan Status, srv *sync.WaitGroup) {
 	failed := true
 	defer func() {
 		active <- Status{Delta: -1, Failed: failed}
@@ -35,7 +35,7 @@ func (s *SshGroup) Command(ssh *SshServer, Command string, NoStrict bool, messag
 
 	/* host key checking from commandline arguments */
 	StrictHostKeyChecking := "StrictHostKeyChecking=yes"
-	if NoStrict {
+	if s.NoStrict {
 		StrictHostKeyChecking = "StrictHostKeyChecking=accept-new"
 	}
 
