@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"io"
+	"log"
 	"os"
 	"sort"
 	"strings"
@@ -36,7 +37,15 @@ func LoadServerList(file *os.File) (AddrPadding int, servers ServerList) {
 	}
 	Reader := bufio.NewReader(file)
 	section := "main"
-	for Line, err := Reader.ReadString('\n'); err != io.EOF; Line, err = Reader.ReadString('\n') {
+	for {
+		Line, err := Reader.ReadString('\n')
+		if err != nil && err != io.EOF {
+			log.Fatalf("LoadServerList: Error: %v", err)
+		}
+		/* the last line may not end with a newline */
+		if err == io.EOF && Line == "" {
+			break
+		}
 		SLine := strings.TrimSpace(Line)
 		if strings.HasPrefix(SLine, "[") && strings.HasSuffix(SLine, "]") {
 			section = SLine[1 : len(SLine)-1]
