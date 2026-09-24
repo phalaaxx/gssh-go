@@ -1,5 +1,5 @@
 module gssh
 
-go 1.23.5
+go 1.24
 
-require github.com/phalaaxx/clap v0.1.2
+require github.com/phalaaxx/clap v0.1.3
