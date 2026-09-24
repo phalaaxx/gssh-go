@@ -76,8 +76,14 @@ func main() {
 	/* make new group */
 	group := new(SshGroup)
 
-	/* no point to display more processes than */
-	*OptProcesses = int(math.Max(float64(*OptProcesses), float64(servers.Len(*OptSection))))
+	/* no point to spawn more processes than servers */
+	if *OptProcesses < 1 {
+		log.Fatal("Number of parallel processes must be at least 1.")
+	}
+	*OptProcesses = int(math.Min(float64(*OptProcesses), float64(servers.Len(*OptSection))))
+
+	/* limit the number of parallel ssh processes */
+	slots := make(chan struct{}, *OptProcesses)
 
 	/* print heading text */
 	TemplateString := `%s
@@ -103,9 +109,13 @@ func main() {
 				Address:  Server,
 			}
 			group.Servers = append(group.Servers, ssh)
-			/* run command */
+			/* wait for a free slot and run command */
+			slots <- struct{}{}
 			active <- 1
-			go group.Command(ssh, OptCommand, *OptNoStrict, message, active, srv)
+			go func() {
+				defer func() { <-slots }()
+				group.Command(ssh, OptCommand, *OptNoStrict, message, active, srv)
+			}()
 			/* time delay and max processes wait between spawns */
 			if i < servers.Len(*OptSection) {
 				time.Sleep(time.Duration(*OptDelay) * time.Millisecond)
