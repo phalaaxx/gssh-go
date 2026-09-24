@@ -65,6 +65,7 @@ func (s *SshGroup) Command(ssh *SshServer, Command string, NoStrict bool, messag
 		"-o", "GSSAPIAuthentication=no",
 		"-o", "HostbasedAuthentication=no",
 		"-l", ssh.Username,
+		"--",
 		ssh.Address,
 		Command)
 
